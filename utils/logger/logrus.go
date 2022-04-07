@@ -102,27 +102,30 @@ func (f SimpleFormatter) Format(entry *log.Entry) ([]byte, error) {
 
 // iris 日志相关
 
-func Iris() iris.Handler {
+func Iris(prefix string) iris.Handler {
 	return requestLogger.New(requestLogger.Config{
 		Status:     true,
 		IP:         true,
 		Method:     true,
 		Path:       true,
 		Query:      true,
-		LogFunc:    irisLoggerFunc,
+		LogFunc:    getIrisLoggerFunc(prefix),
 		LogFuncCtx: nil,
 		Skippers:   nil,
 	})
 }
 
-func irisLoggerFunc(endTime time.Time, latency time.Duration, status, ip, method, path string,
-	message interface{}, headerMessage interface{}) {
-	log.Infof("[IRIS] %3v | %13v | %15v | %-7v  %#v | msg: %v",
-		status,
-		latency,
-		ip,
-		method,
-		path,
-		message,
-	)
+func getIrisLoggerFunc(prefix string) func(endTime time.Time, latency time.Duration,
+	status, ip, method, path string, message interface{}, headerMessage interface{}) {
+	fmtStr := prefix + " %3v | %13v | %15v | %-7v  %#v | msg: %v"
+	return func(endTime time.Time, latency time.Duration, status, ip, method, path string, message interface{}, headerMessage interface{}) {
+		log.Infof(fmtStr,
+			status,
+			latency,
+			ip,
+			method,
+			path,
+			message,
+		)
+	}
 }
