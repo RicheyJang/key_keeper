@@ -2,6 +2,8 @@
 .vscode
 cert
 log
+kk
 *.exe
+*.toml
 *.yaml
 go.sum

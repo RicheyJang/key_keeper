@@ -7,11 +7,13 @@ import (
 	stdlog "log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/RicheyJang/key_keeper/keeper/example"
 	"github.com/RicheyJang/key_keeper/logic"
 	"github.com/RicheyJang/key_keeper/utils"
 	"github.com/RicheyJang/key_keeper/utils/logger"
+	"github.com/fsnotify/fsnotify"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/core/host"
 	"github.com/kataras/iris/v12/core/router"
@@ -43,7 +45,7 @@ func setupRoute(group iris.Party) {
 func init() {
 	pflag.StringP("host", "h", ":7709", "service running host")
 	pflag.StringP("log", "l", "info", "the level of logging")
-	pflag.StringP("config", "c", "./config.yaml", "configuration file path")
+	configPath := pflag.StringP("config", "c", "./config.toml", "configuration file path")
 	pflag.Parse()
 	// Host配置
 	viper.SetDefault("host", ":7709")
@@ -58,6 +60,10 @@ func init() {
 	viper.SetDefault("cert.ca", "cert/ca.crt")
 	viper.SetDefault("cert.self", "cert/server.crt")
 	viper.SetDefault("cert.private", "cert/server_rsa_private.pem")
+	configDir, configFile := filepath.Split(*configPath)
+	if err := flushConfig(configDir, configFile); err != nil {
+		log.Fatal("setup config error: ", err)
+	}
 }
 
 func main() {
@@ -116,4 +122,34 @@ func getRunner(addr string, hostConfigs ...host.Configurator) iris.Runner {
 			Configure(hostConfigs...).
 			ListenAndServeTLS("", "")
 	}
+}
+
+// 从文件和命令行中刷新所有主配置，若文件不存在将会把配置写入该文件
+func flushConfig(configPath string, configFileName string) error {
+	// 从文件读取
+	viper.AddConfigPath(configPath)
+	viper.SetConfigFile(configFileName)
+	fullPath := filepath.Join(configPath, configFileName)
+	//fileType := filepath.Ext(fullPath)
+	//viper.SetConfigType(fileType)
+	if utils.FileExists(fullPath) { // 配置文件已存在：合并自配置文件后重新写入
+		err := viper.MergeInConfig()
+		if err != nil {
+			log.Error("flushConfig error in MergeInConfig err: ", err)
+			return err
+		}
+		_ = viper.WriteConfigAs(fullPath)
+	} else { // 配置文件不存在：写入配置
+		err := viper.SafeWriteConfigAs(fullPath)
+		if err != nil {
+			log.Error("flushConfig error in SafeWriteConfig err: ", err)
+			return err
+		}
+	}
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) { // 配置文件发生变更之后会调用的回调函数
+		_ = logger.SetupLogger()
+		log.Infof("reload config from %v", e.Name)
+	})
+	return nil
 }
