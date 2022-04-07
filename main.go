@@ -111,7 +111,7 @@ func getRunner(addr string, hostConfigs ...host.Configurator) iris.Runner {
 			GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 				return cert, nil
 			},
-			NextProtos: []string{"h2", "http/1.1"},
+			// NextProtos: []string{"h2", "http/1.1"},
 		},
 		ErrorLog: stdlog.New(logw, "[kk] ", stdlog.LstdFlags),
 	}
