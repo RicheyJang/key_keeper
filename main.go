@@ -50,7 +50,6 @@ func init() {
 	// Host配置
 	viper.SetDefault("host", ":7709")
 	_ = viper.BindPFlag("host", pflag.Lookup("host"))
-	_ = viper.BindPFlag("config", pflag.Lookup("config"))
 	// 日志配置
 	viper.SetDefault("log.level", "info")
 	_ = viper.BindPFlag("log.level", pflag.Lookup("log"))
