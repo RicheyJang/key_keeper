@@ -19,8 +19,15 @@ func (k KeeperEx) GetKeyInfo(request keeper.KeyRequest) (keeper.KeyInfo, error) 
 	}, nil
 }
 
-func (k KeeperEx) GetLatestKeyVersion(request keeper.KeyRequest) (uint, error) {
-	return 1, nil
+func (k KeeperEx) GetLatestVersionKey(ID uint) (keeper.KeyInfo, error) {
+	return keeper.KeyInfo{
+		ID:        ID,
+		Version:   1,
+		Key:       "98f318d8ed245606332427ea92011ec0",
+		Length:    16,
+		Algorithm: "aes-cbc",
+		Timeout:   math.MaxUint32,
+	}, nil
 }
 
 func (k KeeperEx) Destroy() error {

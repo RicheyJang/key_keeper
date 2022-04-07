@@ -2,11 +2,16 @@ package logger
 
 import (
 	"bytes"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kataras/iris/v12"
 	requestLogger "github.com/kataras/iris/v12/middleware/logger"
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cast"
 	"github.com/spf13/viper"
@@ -21,9 +26,39 @@ func SetupLogger() error {
 	}
 	// 日志格式
 	log.SetFormatter(&SimpleFormatter{})
-	// TODO 日志写入文件
+	// 日志滚动切割
+	logW, err := GetWriter()
+	if err != nil {
+		log.Error("Get rotate logs file err: ", err)
+		return err
+	}
+	// 日志输出
+	log.SetOutput(logW)
 	return nil
 }
+
+// GetWriter 获取日志输出writer
+func GetWriter() (io.Writer, error) {
+	writerLock.Lock()
+	defer writerLock.Unlock()
+	if writer == nil {
+		dir := viper.GetString("log.dir")
+		logf, err := rotatelogs.New(
+			filepath.Join(dir, "kk-%Y-%m-%d.log"),
+			rotatelogs.WithLinkName(filepath.Join(dir, "kk.log")),
+			rotatelogs.WithMaxAge(time.Duration(viper.GetInt("log.date"))*24*time.Hour),
+			rotatelogs.WithRotationTime(24*time.Hour),
+		)
+		if err != nil {
+			return nil, err
+		}
+		writer = io.MultiWriter(os.Stdout, logf)
+	}
+	return writer, nil
+}
+
+var writer io.Writer
+var writerLock sync.Mutex
 
 var flagLToLevel = map[string]log.Level{
 	"debug":   log.DebugLevel,

@@ -2,8 +2,8 @@ package keeper
 
 // KeyRequest 密钥请求
 type KeyRequest struct {
-	ID      uint
-	Version uint
+	ID      uint `json:"id"`
+	Version uint `json:"version"`
 }
 
 // KeyInfo 密钥信息
@@ -19,7 +19,7 @@ type KeyInfo struct {
 // KeyKeeper 密钥保管器：负责生成密钥、加密保存自己的密钥集、备份密钥等
 type KeyKeeper interface {
 	GetKeyInfo(request KeyRequest) (KeyInfo, error)
-	GetLatestKeyVersion(request KeyRequest) (uint, error)
+	GetLatestVersionKey(ID uint) (KeyInfo, error)
 
 	Destroy() error // 熔断
 }

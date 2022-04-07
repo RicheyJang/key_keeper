@@ -1,6 +1,7 @@
 .idea
 .vscode
 cert
+log
 *.exe
 *.yaml
 go.sum

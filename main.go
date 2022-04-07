@@ -4,8 +4,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"log"
+	stdlog "log"
 	"net/http"
+	"os"
 
 	"github.com/RicheyJang/key_keeper/keeper/example"
 	"github.com/RicheyJang/key_keeper/logic"
@@ -15,15 +16,9 @@ import (
 	"github.com/kataras/iris/v12/core/host"
 	"github.com/kataras/iris/v12/core/router"
 	irisRecover "github.com/kataras/iris/v12/middleware/recover"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-)
-
-// TODO 证书文件路径使用配置
-const (
-	CACertPath     = "cert/ca.crt"
-	ServerCertPath = "cert/server.crt"
-	ServerKeyPath  = "cert/server_rsa_private.pem"
 )
 
 func setupRoute(group iris.Party) {
@@ -40,7 +35,8 @@ func setupRoute(group iris.Party) {
 	// 设置路由
 	group.PartyFunc("/inner", func(inner router.Party) {
 		inner.Use(manager.PreRouterOfSetKeeper)
-		inner.Post("/echo", manager.GetKeyInfo)
+		inner.Post("/key", manager.GetKeyInfo)
+		inner.Post("/version", manager.GetLatestVersionKey)
 	})
 }
 
@@ -56,6 +52,12 @@ func init() {
 	// 日志配置
 	viper.SetDefault("log.level", "info")
 	_ = viper.BindPFlag("log.level", pflag.Lookup("log"))
+	viper.SetDefault("log.dir", "log")
+	viper.SetDefault("log.date", 5)
+	// 证书配置
+	viper.SetDefault("cert.ca", "cert/ca.crt")
+	viper.SetDefault("cert.self", "cert/server.crt")
+	viper.SetDefault("cert.private", "cert/server_rsa_private.pem")
 }
 
 func main() {
@@ -74,24 +76,28 @@ func main() {
 	// TODO 前端嵌入
 
 	// 启动
-	log.Fatal(app.Run(GetRunner(viper.GetString("host")),
+	log.Fatal(app.Run(getRunner(viper.GetString("host")),
 		iris.WithoutPathCorrectionRedirection,
 		iris.WithOptimizations))
 }
 
-func GetRunner(addr string, hostConfigs ...host.Configurator) iris.Runner {
+func getRunner(addr string, hostConfigs ...host.Configurator) iris.Runner {
 	// 读取证书
 	pool := x509.NewCertPool()
-	crt, err := ioutil.ReadFile(CACertPath)
+	crt, err := ioutil.ReadFile(viper.GetString("cert.ca"))
 	if err != nil {
 		log.Fatal("Failed to read CA certificate: ", err.Error())
 	}
 	pool.AppendCertsFromPEM(crt)
-	cert, err := utils.LoadCertificate(ServerCertPath, ServerKeyPath)
+	cert, err := utils.LoadCertificate(viper.GetString("cert.self"), viper.GetString("cert.private"))
 	if err != nil {
 		log.Fatal("Failed to read Server certificate: ", err.Error())
 	}
 	// 设置证书认证
+	logw, err := logger.GetWriter()
+	if err != nil {
+		logw = os.Stderr
+	}
 	s := &http.Server{
 		Addr: addr,
 		TLSConfig: &tls.Config{
@@ -102,6 +108,7 @@ func GetRunner(addr string, hostConfigs ...host.Configurator) iris.Runner {
 			},
 			NextProtos: []string{"h2", "http/1.1"},
 		},
+		ErrorLog: stdlog.New(logw, "[kk] ", stdlog.LstdFlags),
 	}
 	// 生成Runner
 	return func(app *iris.Application) error {
