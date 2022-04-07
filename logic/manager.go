@@ -78,7 +78,7 @@ func responseError(c iris.Context, err error) {
 		}
 	}
 	// 回应error
-	c.StatusCode(http.StatusOK)
+	c.StatusCode(http.StatusInternalServerError)
 	_, _ = c.JSON(iris.Map{
 		"code": errT.Code,
 		"msg":  errT.Msg,
