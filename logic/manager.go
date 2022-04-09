@@ -11,26 +11,22 @@ import (
 
 // Manager 逻辑管理器：负责处理API逻辑、生成密钥保管器（实例）等
 type Manager struct {
-	defaultKeeper keeper.KeyKeeper
-	defaultKName  string   // 默认Keeper名称
-	generatorMap  sync.Map // keeper名称 -> 生成器(keeper.Generator)
-	keeperMap     sync.Map // 实例标识符 -> 该实例的密钥保管器
+	defaultIns   InstanceInfo // 默认实例
+	defaultKName string       // 默认Keeper名称
+	generatorMap sync.Map     // keeper名称 -> 生成器(keeper.Generator)
+	instanceMap  sync.Map     // 实例标识符 -> 实例信息(InstanceInfo)
 }
 
 // Option 创建Manager时的参数
 type Option struct {
-	KGs []KeeperGeneratorPair
+	KGs []KeeperGeneratorPair // 首项认为是默认生成器
 }
 
 // KeeperGeneratorPair 密钥保管器名称及其对应的生成器
 type KeeperGeneratorPair struct {
 	KeeperName string           // 密钥保管器名称
 	Generator  keeper.Generator // keeper生成器
-	IsDefault  bool             // 是否为默认keeper
 }
-
-// DefaultKeeperOption 默认密钥保管器生成配置
-var DefaultKeeperOption = keeper.Option{}
 
 // NewManager 创建Manager
 func NewManager(option Option) (*Manager, error) {
@@ -38,28 +34,23 @@ func NewManager(option Option) (*Manager, error) {
 	if len(option.KGs) == 0 {
 		return nil, errors.New(-1, "Initial Error: KeeperGeneratorPair is empty")
 	}
-	m := new(Manager)
-	// 创建默认keeper
-	defaultG := option.KGs[0].Generator
-	m.defaultKName = option.KGs[0].KeeperName
-	for _, kg := range option.KGs {
-		if kg.IsDefault == true {
-			defaultG = kg.Generator
-			m.defaultKName = kg.KeeperName
-			break
-		}
-	}
-	defaultK, err := defaultG(DefaultKeeperOption)
+	// 获取所有实例
+	instances, err := LoadAllInstances(option.KGs)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(-1, "LoadAllInstances failed: %v", err)
 	}
-	if defaultK == nil {
-		return nil, errors.New(-1, "Initial Error: Default Keeper got nil")
+	if len(instances) == 0 || instances[0].Identifier != DefaultInstanceID { // 至少应该有默认实例
+		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
 	}
 	// 初始化Manager
-	m.defaultKeeper = defaultK
+	m := new(Manager)
+	m.defaultKName = option.KGs[0].KeeperName
+	m.defaultIns = instances[0]
 	for _, kg := range option.KGs {
 		m.generatorMap.Store(kg.KeeperName, kg.Generator)
+	}
+	for _, ins := range instances {
+		m.instanceMap.Store(ins.Identifier, ins)
 	}
 	return m, nil
 }

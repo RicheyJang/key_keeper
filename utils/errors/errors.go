@@ -1,6 +1,9 @@
 package errors
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Error struct {
 	Code int
@@ -16,4 +19,8 @@ func New(code int, msg string) Error {
 		Code: code,
 		Msg:  msg,
 	}
+}
+
+func Newf(code int, format string, args ...interface{}) Error {
+	return New(code, fmt.Sprintf(format, args...))
 }

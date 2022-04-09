@@ -48,7 +48,7 @@ func main() {
 	// 初始化Manager
 	manager, err := logic.NewManager(logic.Option{
 		KGs: []logic.KeeperGeneratorPair{ // 密钥保管器 及其 对应的生成器 列表 TODO 补充KG列表、使用其它Keeper为默认
-			{KeeperName: "Example", Generator: example.NewExampleKeeper, IsDefault: true},
+			{KeeperName: "Example", Generator: example.NewExampleKeeper},
 		},
 	})
 	if err != nil {
