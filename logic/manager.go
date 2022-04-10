@@ -5,21 +5,32 @@ import (
 	"sync"
 
 	"github.com/RicheyJang/key_keeper/keeper"
+	"github.com/RicheyJang/key_keeper/model"
 	"github.com/RicheyJang/key_keeper/utils/errors"
 	"github.com/kataras/iris/v12"
+	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 )
 
 // Manager 逻辑管理器：负责处理API逻辑、生成密钥保管器（实例）等
 type Manager struct {
-	defaultIns   InstanceInfo // 默认实例
-	defaultKName string       // 默认Keeper名称
-	generatorMap sync.Map     // keeper名称 -> 生成器(keeper.Generator)
-	instanceMap  sync.Map     // 实例标识符 -> 实例信息(InstanceInfo)
+	defaultKName string   // 默认Keeper名称
+	generatorMap sync.Map // keeper名称 -> 生成器(keeper.Generator)
+
+	defaultIns  InstanceInfo // 默认实例
+	instanceMap sync.Map     // 实例标识符 -> 实例信息(InstanceInfo)
+
+	frozenUsers sync.Map           // 此次运行中被冻结的用户ID集合，用于使JWT失效
+	userManager *model.UserManager // 用户管理器
+
+	db *gorm.DB
 }
 
 // Option 创建Manager时的参数
 type Option struct {
-	KGs []KeeperGeneratorPair // 首项认为是默认生成器
+	KGs         []KeeperGeneratorPair // 首项认为是默认生成器
+	DB          *gorm.DB
+	UserManager *model.UserManager
 }
 
 // KeeperGeneratorPair 密钥保管器名称及其对应的生成器
@@ -34,24 +45,29 @@ func NewManager(option Option) (*Manager, error) {
 	if len(option.KGs) == 0 {
 		return nil, errors.New(-1, "Initial Error: KeeperGeneratorPair is empty")
 	}
-	// 获取所有实例
-	instances, err := LoadAllInstances(option.KGs)
-	if err != nil {
-		return nil, errors.Newf(-1, "LoadAllInstances failed: %v", err)
+	if option.DB == nil {
+		return nil, errors.New(-1, "Initial Error: db is nil")
 	}
-	if len(instances) == 0 || instances[0].Identifier != DefaultInstanceID { // 至少应该有默认实例
-		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
+	if option.UserManager == nil {
+		return nil, errors.New(-1, "Initial Error: userManager is nil")
 	}
 	// 初始化Manager
 	m := new(Manager)
+	m.db = option.DB
+	m.userManager = option.UserManager
 	m.defaultKName = option.KGs[0].KeeperName
-	m.defaultIns = instances[0]
 	for _, kg := range option.KGs {
 		m.generatorMap.Store(kg.KeeperName, kg.Generator)
 	}
-	for _, ins := range instances {
-		m.instanceMap.Store(ins.Identifier, ins)
+	// 获取所有实例
+	if err := m.initAllInstances(); err != nil {
+		return nil, errors.Newf(-1, "InitAllInstances failed: %v", err)
 	}
+	defaultInstanceValue, ok := m.instanceMap.Load(DefaultInstanceIdentifier)
+	if !ok || defaultInstanceValue == nil { // 至少应该有默认实例
+		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
+	}
+	m.defaultIns = defaultInstanceValue.(InstanceInfo)
 	return m, nil
 }
 
@@ -68,9 +84,14 @@ func responseError(c iris.Context, err error) {
 			errT = errors.New(errors.CodeInner, err.Error())
 		}
 	}
+	if errT != errors.Unknown {
+		log.Errorf("API error: %v", err)
+	}
+	if errT.Code == errors.CodeInner {
+		errT = errors.Unknown
+	}
 	// 回应error
-	c.StatusCode(http.StatusInternalServerError)
-	_, _ = c.JSON(iris.Map{
+	c.StopWithJSON(http.StatusInternalServerError, iris.Map{
 		"code": errT.Code,
 		"msg":  errT.Msg,
 	})
@@ -79,9 +100,12 @@ func responseError(c iris.Context, err error) {
 // 回包：成功
 func responseSuccess(c iris.Context, key string, value interface{}) {
 	c.StatusCode(http.StatusOK)
-	_, _ = c.JSON(iris.Map{
+	data := iris.Map{
 		"code": 0,
 		"msg":  "success",
-		key:    value,
-	})
+	}
+	if value != nil {
+		data[key] = value
+	}
+	_, _ = c.JSON(data)
 }

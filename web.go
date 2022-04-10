@@ -21,7 +21,11 @@ func WebServer(manager *logic.Manager, addr string) {
 	// 设置路由
 	app.PartyFunc("/api", func(api router.Party) {
 		api.Use(logger.Iris("[ Web ]")) // 日志
-		// TODO 注册后端接口
+		// 注册后端API
+		api.Post("/login", manager.GetLoginHandler())
+
+		api.Use(manager.GetVerifyHandler())
+		api.Post("/logout", manager.HandlerOfLogout)
 	})
 	// 前端页面
 	setupStatic(app)

@@ -1,5 +1,7 @@
 package keeper
 
+import "gorm.io/gorm"
+
 // KeyRequest 密钥请求
 type KeyRequest struct {
 	ID      uint `json:"id"`
@@ -27,6 +29,7 @@ type KeyKeeper interface {
 // Option 生成Keeper时的参数
 type Option struct {
 	Identifier string
+	DB         *gorm.DB
 }
 
 // Generator 生成器，用于生成一个Keeper实例
