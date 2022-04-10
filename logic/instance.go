@@ -2,11 +2,12 @@ package logic
 
 import (
 	"sort"
-
-	"github.com/RicheyJang/key_keeper/utils/errors"
+	"strconv"
 
 	"github.com/RicheyJang/key_keeper/keeper"
 	"github.com/RicheyJang/key_keeper/model"
+	"github.com/RicheyJang/key_keeper/utils/errors"
+	"github.com/kataras/iris/v12"
 )
 
 // InstanceInfo 实例信息
@@ -81,6 +82,7 @@ func (manager *Manager) initInstance(instance model.Instance) error {
 	return nil
 }
 
+// 创建实例
 func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, error) {
 	// 获取generator
 	generatorValue, ok := manager.generatorMap.Load(instance.Keeper)
@@ -106,4 +108,32 @@ func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, e
 	}
 	manager.instanceMap.Store(instance.Identifier, info)
 	return info, nil
+}
+
+// 获取特定实例
+func (manager *Manager) getInstance(identifier string) (InstanceInfo, bool) {
+	if identifier == "" {
+		return InstanceInfo{}, false
+	}
+	infoValue, ok := manager.instanceMap.Load(identifier)
+	if !ok {
+		return InstanceInfo{}, false
+	}
+	info, ok := infoValue.(InstanceInfo)
+	return info, ok
+}
+
+// 获取特定实例并检查用户对该实例是否有权限
+func (manager *Manager) getInstanceAndCheckUser(identifier string, ctx iris.Context) (InstanceInfo, error) {
+	info, ok := manager.getInstance(identifier)
+	if !ok {
+		return InstanceInfo{}, errors.New(errors.CodeRequest, "no such instance")
+	}
+	// 检查用户权限
+	user := manager.getUserClaims(ctx)
+	if user.Level >= model.UserLevelRoot || info.HasUser(strconv.FormatUint(uint64(user.ID), 10)) {
+		return info, nil
+	} else {
+		return InstanceInfo{}, errors.PermissionDeny
+	}
 }

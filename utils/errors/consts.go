@@ -5,6 +5,7 @@ const (
 	CodeKey     = 10001
 	CodeRequest = 10002
 
+	CodePermission  = 10003
 	CodeWrongPasswd = 10004
 	CodeUserFrozen  = 10005
 	CodeNeedLogin   = 10006
@@ -18,4 +19,5 @@ var (
 	WrongPasswd    = New(CodeWrongPasswd, "wrong password")
 	UserFrozen     = New(CodeUserFrozen, "user is frozen")
 	InvalidToken   = New(CodeNeedLogin, "invalid token")
+	PermissionDeny = New(CodePermission, "permission deny")
 )

@@ -63,11 +63,11 @@ func NewManager(option Option) (*Manager, error) {
 	if err := m.initAllInstances(); err != nil {
 		return nil, errors.Newf(-1, "InitAllInstances failed: %v", err)
 	}
-	defaultInstanceValue, ok := m.instanceMap.Load(DefaultInstanceIdentifier)
-	if !ok || defaultInstanceValue == nil { // 至少应该有默认实例
+	defaultInstance, ok := m.getInstance(DefaultInstanceIdentifier)
+	if !ok { // 至少应该有默认实例
 		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
 	}
-	m.defaultIns = defaultInstanceValue.(InstanceInfo)
+	m.defaultIns = defaultInstance
 	return m, nil
 }
 
