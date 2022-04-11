@@ -64,6 +64,15 @@ func NewUserManger(db *gorm.DB) *UserManager {
 	return m
 }
 
+// GetUser 获取用户
+func (m *UserManager) GetUser(id uint) (*User, error) {
+	var user User
+	if err := m.db.First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 // CheckUser 验证用户名密码
 func (m *UserManager) CheckUser(name, passwd string) (User, error) {
 	var user User
@@ -74,6 +83,22 @@ func (m *UserManager) CheckUser(name, passwd string) (User, error) {
 		return user, errors.WrongPasswd
 	}
 	return user, nil
+}
+
+// SaveUserLoginInfo 更新用户登录信息
+func (m *UserManager) SaveUserLoginInfo(user User) error {
+	if user.ID == 0 {
+		return errors.InvalidRequest
+	}
+	return m.db.Model(&user).Updates(User{
+		LastLogin: user.LastLogin,
+		LastIP:    user.LastIP,
+	}).Error
+}
+
+// FreezeUser 冻结用户
+func (m *UserManager) FreezeUser(id uint, isFrozen bool) error {
+	return m.db.Model(&User{}).Where("id = ?", id).Update("is_frozen", isFrozen).Error
 }
 
 func passwdToSha256(passwd string) string {

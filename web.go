@@ -26,6 +26,10 @@ func WebServer(manager *logic.Manager, addr string) {
 
 		api.Use(manager.GetVerifyHandler())
 		api.Post("/logout", manager.HandlerOfLogout)
+
+		api.PartyFunc("/user", func(userAPI router.Party) {
+			userAPI.Post("/freeze", manager.HandlerOfFreezeUser)
+		})
 	})
 	// 前端页面
 	setupStatic(app)

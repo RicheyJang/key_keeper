@@ -39,8 +39,13 @@ type KeeperGeneratorPair struct {
 	Generator  keeper.Generator // keeper生成器
 }
 
+var onlyOneManager *Manager
+
 // NewManager 创建Manager
 func NewManager(option Option) (*Manager, error) {
+	if onlyOneManager != nil { // 单例
+		return GetManager(), nil
+	}
 	// option 检查
 	if len(option.KGs) == 0 {
 		return nil, errors.New(-1, "Initial Error: KeeperGeneratorPair is empty")
@@ -68,7 +73,13 @@ func NewManager(option Option) (*Manager, error) {
 		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
 	}
 	m.defaultIns = defaultInstance
+	onlyOneManager = m
 	return m, nil
+}
+
+// GetManager 获取Manager
+func GetManager() *Manager {
+	return onlyOneManager
 }
 
 // 回包：出错

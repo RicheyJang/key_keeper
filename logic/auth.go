@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/RicheyJang/key_keeper/model"
 	"github.com/RicheyJang/key_keeper/utils/errors"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/middleware/jwt"
@@ -23,6 +24,15 @@ type UserClaims struct {
 	ID    uint
 	Name  string
 	Level int
+}
+
+// Validate UserClaims验证函数，将在JWT Verify时调用
+func (uc UserClaims) Validate() error {
+	m := GetManager()
+	if _, ok := m.frozenUsers.Load(uc.ID); ok { // 检查该用户是否被冻结
+		return errors.UserFrozen
+	}
+	return nil
 }
 
 // GetLoginHandler 获取登录处理函数
@@ -63,6 +73,12 @@ func (manager *Manager) GetLoginHandler() iris.Handler {
 			responseError(ctx, errors.Unknown)
 			return
 		}
+		// 记录用户登录时间、登录IP
+		_ = manager.userManager.SaveUserLoginInfo(model.User{
+			ID:        user.ID,
+			LastIP:    ctx.RemoteAddr(),
+			LastLogin: time.Now(),
+		})
 		responseSuccess(ctx, "data", iris.Map{
 			"token":    string(token),
 			"username": user.Name,
@@ -78,6 +94,7 @@ func (manager *Manager) GetVerifyHandler() iris.Handler {
 		maxAge = time.Minute
 	}
 
+	// 创建验证器
 	verifier := jwt.NewVerifier(jwt.HS256, secret)
 	verifier.Blocklist = orgjwt.NewBlocklist(maxAge)
 	verifier.Extractors = []jwt.TokenExtractor{jwt.FromHeader} // extract token only from Authorization: Bearer $token

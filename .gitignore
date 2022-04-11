@@ -2,6 +2,7 @@
 .vscode
 cert
 log
+dist
 kk
 *.exe
 *.toml
