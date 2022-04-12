@@ -9,6 +9,7 @@ const (
 	CodeWrongPasswd = 10004
 	CodeUserFrozen  = 10005
 	CodeNeedLogin   = 10006
+	CodeUserExist   = 10007
 )
 
 var (
@@ -20,4 +21,5 @@ var (
 	UserFrozen     = New(CodeUserFrozen, "user is frozen")
 	InvalidToken   = New(CodeNeedLogin, "invalid token")
 	PermissionDeny = New(CodePermission, "permission deny")
+	UserExist      = New(CodeUserExist, "user already exist")
 )

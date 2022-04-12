@@ -110,6 +110,12 @@ func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, e
 	return info, nil
 }
 
+// 冻结指定用户的所有实例
+func (manager *Manager) freezeUserInstances(id uint) error {
+	// TODO 实现 冻结指定用户的所有实例
+	return nil
+}
+
 // 获取特定实例
 func (manager *Manager) getInstance(identifier string) (InstanceInfo, bool) {
 	if identifier == "" {

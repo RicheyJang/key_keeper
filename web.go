@@ -28,6 +28,11 @@ func WebServer(manager *logic.Manager, addr string) {
 		api.Post("/logout", manager.HandlerOfLogout)
 
 		api.PartyFunc("/user", func(userAPI router.Party) {
+			userAPI.Get("/", manager.HandlerOfGetUsers)
+			userAPI.Put("/", manager.HandlerOfAddUser)
+			userAPI.Delete("/", manager.HandlerOfDeleteUser)
+
+			userAPI.Post("/level", manager.HandlerOfSetUserLevel)
 			userAPI.Post("/freeze", manager.HandlerOfFreezeUser)
 			userAPI.Post("/password", manager.HandlerOfChangePasswd)
 		})
