@@ -82,6 +82,7 @@ func (manager *Manager) GetLoginHandler() iris.Handler {
 		responseSuccess(ctx, "data", iris.Map{
 			"token":    string(token),
 			"username": user.Name,
+			"level":    user.Level,
 		})
 	}
 }

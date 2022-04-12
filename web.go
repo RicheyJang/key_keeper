@@ -29,6 +29,7 @@ func WebServer(manager *logic.Manager, addr string) {
 
 		api.PartyFunc("/user", func(userAPI router.Party) {
 			userAPI.Post("/freeze", manager.HandlerOfFreezeUser)
+			userAPI.Post("/password", manager.HandlerOfChangePasswd)
 		})
 	})
 	// 前端页面

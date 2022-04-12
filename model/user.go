@@ -101,6 +101,11 @@ func (m *UserManager) FreezeUser(id uint, isFrozen bool) error {
 	return m.db.Model(&User{}).Where("id = ?", id).Update("is_frozen", isFrozen).Error
 }
 
+// ChangePasswd 修改用户密码
+func (m *UserManager) ChangePasswd(id uint, passwd string) error {
+	return m.db.Model(&User{}).Where("id = ?", id).Update("passwd", passwdToSha256(passwd)).Error
+}
+
 func passwdToSha256(passwd string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(passwd)))
 }

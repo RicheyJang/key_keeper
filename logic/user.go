@@ -56,3 +56,40 @@ func (manager *Manager) HandlerOfFreezeUser(ctx iris.Context) {
 	}
 	responseSuccess(ctx, "", nil)
 }
+
+type ChangePasswdRequest struct {
+	UserID      uint   `json:"id"`          // 为空代表修改自己的密码；否则代表修改指定用户的密码
+	OldPassword string `json:"oldPassword"` // 修改指定用户密码时，此项可以为空
+	NewPassword string `json:"newPassword"`
+}
+
+// HandlerOfChangePasswd 修改密码处理函数
+func (manager *Manager) HandlerOfChangePasswd(ctx iris.Context) {
+	// 校验参数
+	var request ChangePasswdRequest
+	err := ctx.ReadJSON(&request)
+	if err != nil {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	// 权限检查
+	self := manager.getUserClaims(ctx)
+	if request.UserID != 0 && request.UserID != self.ID { // 修改其他用户的密码
+		if self.Level < model.UserLevelRoot {
+			responseError(ctx, errors.PermissionDeny)
+			return
+		}
+	} else { // 自己修改自己的密码
+		if _, err = manager.userManager.CheckUser(self.Name, request.OldPassword); err != nil {
+			responseError(ctx, errors.WrongPasswd)
+			return
+		}
+		request.UserID = self.ID
+	}
+	// 修改密码
+	if err = manager.userManager.ChangePasswd(request.UserID, request.NewPassword); err != nil {
+		responseError(ctx, err)
+		return
+	}
+	responseSuccess(ctx, "", nil)
+}
