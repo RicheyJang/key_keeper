@@ -90,7 +90,7 @@ func (m *UserManager) SaveUserLoginInfo(user User) error {
 	if user.ID == 0 {
 		return errors.InvalidRequest
 	}
-	return m.db.Model(&user).Updates(User{
+	return m.db.Model(&user).UpdateColumns(User{ // 不更新updated_at
 		LastLogin: user.LastLogin,
 		LastIP:    user.LastIP,
 	}).Error
