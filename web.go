@@ -36,6 +36,10 @@ func WebServer(manager *logic.Manager, addr string) {
 			userAPI.Post("/freeze", manager.HandlerOfFreezeUser)
 			userAPI.Post("/password", manager.HandlerOfChangePasswd)
 		})
+
+		api.PartyFunc("/instance", func(insAPI router.Party) {
+			insAPI.Get("/", manager.HandlerOfGetInstances)
+		})
 	})
 	// 前端页面
 	setupStatic(app)

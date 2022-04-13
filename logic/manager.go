@@ -18,7 +18,7 @@ type Manager struct {
 	generatorMap sync.Map // keeper名称 -> 生成器(keeper.Generator)
 
 	defaultIns  InstanceInfo // 默认实例
-	instanceMap sync.Map     // 实例标识符 -> 实例信息(InstanceInfo)
+	instanceMap sync.Map     // 实例标识符 -> 实例信息(*InstanceInfo)
 
 	frozenUsers sync.Map           // 此次运行中被冻结的用户ID集合，用于使JWT失效
 	userManager *model.UserManager // 用户管理器
@@ -72,7 +72,8 @@ func NewManager(option Option) (*Manager, error) {
 	if !ok { // 至少应该有默认实例
 		return nil, errors.New(-1, "LoadAllInstances failed: there is no default instance")
 	}
-	m.defaultIns = defaultInstance
+	m.defaultIns = *defaultInstance
+	m.instanceMap.Store(DefaultInstanceIdentifier, &m.defaultIns)
 	onlyOneManager = m
 	return m, nil
 }

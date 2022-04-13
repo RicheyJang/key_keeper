@@ -8,13 +8,14 @@ import (
 )
 
 type Instance struct {
-	ID         uint   `gorm:"primaryKey"`
-	Identifier string `gorm:"column:identifier;uniqueIndex"`
-	Keeper     string `gorm:"column:keeper"`
-	Users      string `gorm:"column:users"`
-	DSafeLevel int    `gorm:"column:d_safe_level"`
-	IPs        string `gorm:"column:ips"`
-	CreatedAt  time.Time
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	Identifier string    `gorm:"column:identifier;uniqueIndex" json:"identifier"`
+	IsFrozen   bool      `gorm:"column:is_frozen" json:"isFrozen"`
+	Keeper     string    `gorm:"column:keeper" json:"keeper"`
+	Users      string    `gorm:"column:users" json:"users"`
+	DSafeLevel int       `gorm:"column:d_safe_level" json:"level"`
+	IPs        string    `gorm:"column:ips" json:"ips"`
+	CreatedAt  time.Time `json:"createTime"`
 }
 
 func (ins Instance) TableName() string {
