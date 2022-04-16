@@ -5,11 +5,12 @@ const (
 	CodeKey     = 10001
 	CodeRequest = 10002
 
-	CodePermission  = 10003
-	CodeWrongPasswd = 10004
-	CodeUserFrozen  = 10005
-	CodeNeedLogin   = 10006
-	CodeUserExist   = 10007
+	CodePermission    = 10003
+	CodeWrongPasswd   = 10004
+	CodeUserFrozen    = 10005
+	CodeNeedLogin     = 10006
+	CodeUserExist     = 10007
+	CodeInstanceExist = 10008
 )
 
 var (
@@ -22,4 +23,6 @@ var (
 	InvalidToken   = New(CodeNeedLogin, "invalid token")
 	PermissionDeny = New(CodePermission, "permission deny")
 	UserExist      = New(CodeUserExist, "user already exist")
+	NoSuchInstance = New(CodeRequest, "no such instance")
+	InstanceExist  = New(CodeInstanceExist, "instance identifier already exist")
 )

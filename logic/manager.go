@@ -2,6 +2,7 @@ package logic
 
 import (
 	"net/http"
+	"sort"
 	"sync"
 
 	"github.com/RicheyJang/key_keeper/keeper"
@@ -81,6 +82,28 @@ func NewManager(option Option) (*Manager, error) {
 // GetManager 获取Manager
 func GetManager() *Manager {
 	return onlyOneManager
+}
+
+// HandlerOfGetMetaInfo 获取元信息处理函数
+func (manager *Manager) HandlerOfGetMetaInfo(ctx iris.Context) {
+	// 获取keeper
+	var keeperNames []string
+	manager.generatorMap.Range(func(key, value interface{}) bool {
+		keeperNames = append(keeperNames, key.(string))
+		return true
+	})
+	sort.Slice(keeperNames, func(i, j int) bool {
+		if keeperNames[i] == manager.defaultKName {
+			return true
+		} else if keeperNames[j] == manager.defaultKName {
+			return false
+		}
+		return keeperNames[i] < keeperNames[j]
+	})
+	// 回包
+	responseSuccess(ctx, "data", iris.Map{
+		"keepers": keeperNames,
+	})
 }
 
 // 回包：出错

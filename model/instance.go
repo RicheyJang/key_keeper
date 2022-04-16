@@ -42,7 +42,7 @@ func (ins *Instance) AddUser(user string) error {
 	if strings.Contains(user, InstanceUserDelimiter) {
 		return errors.New(errors.CodeRequest, "username cannot contain commas")
 	}
-	if strings.HasSuffix(ins.Users, InstanceUserDelimiter) {
+	if len(ins.Users) == 0 || strings.HasSuffix(ins.Users, InstanceUserDelimiter) {
 		ins.Users += user
 	} else {
 		ins.Users += InstanceUserDelimiter + user

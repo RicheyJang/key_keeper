@@ -1,6 +1,8 @@
 package logic
 
 import (
+	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 
@@ -8,6 +10,7 @@ import (
 	"github.com/RicheyJang/key_keeper/model"
 	"github.com/RicheyJang/key_keeper/utils/errors"
 	"github.com/kataras/iris/v12"
+	"gorm.io/gorm"
 )
 
 // InstanceInfo 实例信息
@@ -64,7 +67,7 @@ func (manager *Manager) HandlerOfGetInstances(ctx iris.Context) {
 			return
 		}
 		count = int64(len(instances))
-		if limit > 0 {
+		if limit > 0 && count > 0 { // 分页
 			if offset+limit > int(count) {
 				instances = instances[offset:]
 			} else {
@@ -73,10 +76,133 @@ func (manager *Manager) HandlerOfGetInstances(ctx iris.Context) {
 		}
 	}
 	// 回包
+	if instances == nil {
+		instances = make([]model.Instance, 0)
+	}
 	responseSuccess(ctx, "data", iris.Map{
 		"instances": instances,
 		"total":     count,
 	})
+}
+
+type AddInstanceRequest struct {
+	Identifier string `json:"identifier"`
+	DSafeLevel int    `json:"level"`
+	IPs        string `json:"ips"`
+	Keeper     string `json:"keeper"`
+}
+
+var instanceIdentifierRegexp = regexp.MustCompile(`^[\w.+-]+$`)
+
+// HandlerOfAddInstance 添加实例处理函数
+func (manager *Manager) HandlerOfAddInstance(ctx iris.Context) {
+	// 校验参数
+	var request AddInstanceRequest
+	if err := ctx.ReadJSON(&request); err != nil {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	if len(request.Identifier) == 0 || len(request.Keeper) == 0 {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	if !instanceIdentifierRegexp.MatchString(request.Identifier) {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	if _, ok := manager.getInstance(request.Identifier); ok == true {
+		responseError(ctx, errors.InstanceExist)
+		return
+	}
+	// 创建实例
+	self := manager.getUserClaims(ctx)
+	instance := model.Instance{
+		Identifier: request.Identifier,
+		IsFrozen:   false,
+		Keeper:     request.Keeper,
+		DSafeLevel: request.DSafeLevel,
+		IPs:        request.IPs,
+	}
+	if err := instance.AddUser(strconv.FormatUint(uint64(self.ID), 10)); err != nil {
+		responseError(ctx, err)
+		return
+	}
+	if _, err := manager.createInstance(instance); err != nil {
+		responseError(ctx, err)
+		return
+	}
+	responseSuccess(ctx, "instance", instance)
+}
+
+type FreezeInstanceRequest struct {
+	Identifier string `json:"identifier"`
+	IsFrozen   bool   `json:"isFrozen"`
+}
+
+// HandlerOfFreezeInstance 冻结指定实例处理函数
+func (manager *Manager) HandlerOfFreezeInstance(ctx iris.Context) {
+	// 校验参数
+	var request FreezeInstanceRequest
+	err := ctx.ReadJSON(&request)
+	if err != nil {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	if len(request.Identifier) == 0 || request.Identifier == DefaultInstanceIdentifier {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	// 获取实例
+	_, err = manager.getInstanceAndCheckUser(request.Identifier, ctx)
+	if err != nil {
+		responseError(ctx, err)
+		return
+	}
+	// 冻结实例
+	if err = manager.freezeInstance(request.Identifier, request.IsFrozen); err != nil {
+		responseError(ctx, err)
+		return
+	}
+	// 回包
+	responseSuccess(ctx, "", nil)
+}
+
+// HandlerOfDestroyInstance 销毁实例处理函数
+func (manager *Manager) HandlerOfDestroyInstance(ctx iris.Context) {
+	// 校验参数
+	identifier := ctx.URLParam("identifier")
+	if len(identifier) == 0 || identifier == DefaultInstanceIdentifier {
+		responseError(ctx, errors.InvalidRequest)
+		return
+	}
+	// 获取实例
+	instance, err := manager.getInstanceAndCheckUser(identifier, ctx)
+	if err != nil {
+		responseError(ctx, err)
+		return
+	}
+	// 销毁实例
+	err = manager.db.Transaction(func(tx *gorm.DB) (txErr error) {
+		defer func() {
+			if r := recover(); r != nil {
+				txErr = fmt.Errorf("panic: %v", r)
+			}
+		}()
+		if txErr = tx.Where("identifier = ?", identifier).Delete(&model.Instance{}).Error; txErr != nil {
+			return
+		}
+		if txErr = instance.kp.Destroy(); txErr != nil {
+			return
+		}
+		return
+	})
+	if err != nil {
+		responseError(ctx, err)
+		return
+	}
+	manager.instanceMap.Delete(identifier)
+	// 回包
+	responseSuccess(ctx, "", nil)
 }
 
 // 初始化所有实例
@@ -122,7 +248,7 @@ func (manager *Manager) initAllInstances() error {
 func (manager *Manager) initInstance(instance model.Instance) error {
 	// 获取generator
 	generatorValue, ok := manager.generatorMap.Load(instance.Keeper)
-	if !ok {
+	if !ok || generatorValue == nil {
 		return errors.InvalidKeeper
 	}
 	generator := generatorValue.(keeper.Generator)
@@ -146,7 +272,7 @@ func (manager *Manager) initInstance(instance model.Instance) error {
 func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, error) {
 	// 获取generator
 	generatorValue, ok := manager.generatorMap.Load(instance.Keeper)
-	if !ok {
+	if !ok || generatorValue == nil {
 		return InstanceInfo{}, errors.InvalidKeeper
 	}
 	generator := generatorValue.(keeper.Generator)
@@ -170,9 +296,36 @@ func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, e
 	return info, nil
 }
 
+// 冻结实例
+func (manager *Manager) freezeInstance(identifier string, isFrozen bool) error {
+	info, ok := manager.getInstance(identifier)
+	if !ok {
+		return errors.NoSuchInstance
+	}
+	if err := manager.db.Model(&model.Instance{}).
+		Where("identifier = ?", identifier).Update("is_frozen", isFrozen).Error; err != nil {
+		return err
+	}
+	info.IsFrozen = isFrozen
+	return nil
+}
+
 // 冻结指定用户直接管理的所有实例
 func (manager *Manager) freezeUserInstances(id uint) error {
-	// TODO 实现 冻结指定用户的所有实例
+	// 获取用户直接管理的实例列表
+	instances, err := manager.getInstancesByUser(id)
+	if err != nil {
+		return err
+	}
+	// 冻结所有实例
+	for _, instance := range instances {
+		if instance.Identifier == DefaultInstanceIdentifier { // 除了默认实例
+			continue
+		}
+		if err = manager.freezeInstance(instance.Identifier, true); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -209,7 +362,7 @@ func (manager *Manager) getInstance(identifier string) (*InstanceInfo, bool) {
 func (manager *Manager) getInstanceAndCheckUser(identifier string, ctx iris.Context) (*InstanceInfo, error) {
 	info, ok := manager.getInstance(identifier)
 	if !ok {
-		return nil, errors.New(errors.CodeRequest, "no such instance")
+		return nil, errors.NoSuchInstance
 	}
 	// 检查用户权限
 	user := manager.getUserClaims(ctx)

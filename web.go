@@ -22,6 +22,7 @@ func WebServer(manager *logic.Manager, addr string) {
 	app.PartyFunc("/api", func(api router.Party) {
 		api.Use(logger.Iris("[ Web ]")) // 日志
 		// 注册后端API
+		api.Get("/meta", manager.HandlerOfGetMetaInfo)
 		api.Post("/login", manager.GetLoginHandler())
 
 		api.Use(manager.GetVerifyHandler())
@@ -39,6 +40,10 @@ func WebServer(manager *logic.Manager, addr string) {
 
 		api.PartyFunc("/instance", func(insAPI router.Party) {
 			insAPI.Get("/", manager.HandlerOfGetInstances)
+			insAPI.Put("/", manager.HandlerOfAddInstance)
+			insAPI.Delete("/", manager.HandlerOfDestroyInstance)
+
+			insAPI.Post("/freeze", manager.HandlerOfFreezeInstance)
 		})
 	})
 	// 前端页面
