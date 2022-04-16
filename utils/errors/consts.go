@@ -5,12 +5,13 @@ const (
 	CodeKey     = 10001
 	CodeRequest = 10002
 
-	CodePermission    = 10003
-	CodeWrongPasswd   = 10004
-	CodeUserFrozen    = 10005
-	CodeNeedLogin     = 10006
-	CodeUserExist     = 10007
-	CodeInstanceExist = 10008
+	CodePermission     = 10003
+	CodeWrongPasswd    = 10004
+	CodeUserFrozen     = 10005
+	CodeNeedLogin      = 10006
+	CodeUserExist      = 10007
+	CodeInstanceExist  = 10008
+	CodeInstanceFrozen = 10009
 )
 
 var (
@@ -25,4 +26,5 @@ var (
 	UserExist      = New(CodeUserExist, "user already exist")
 	NoSuchInstance = New(CodeRequest, "no such instance")
 	InstanceExist  = New(CodeInstanceExist, "instance identifier already exist")
+	InstanceFrozen = New(CodeInstanceFrozen, "current instance has been frozen")
 )

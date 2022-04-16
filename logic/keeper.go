@@ -2,6 +2,7 @@ package logic
 
 import (
 	"github.com/RicheyJang/key_keeper/keeper"
+	"github.com/RicheyJang/key_keeper/utils/errors"
 	"github.com/kataras/iris/v12"
 )
 
@@ -9,8 +10,18 @@ const ctxKeeperKey = "key-keeper"
 
 // PreRouterOfSetKeeper Router中间件：根据请求实例查询处理该请求的密钥保管器
 func (manager *Manager) PreRouterOfSetKeeper(ctx iris.Context) {
-	// TODO 分实例给予不同的keeper
-	ctx.Values().Set(ctxKeeperKey, manager.defaultIns.kp)
+	// 分实例给予不同的keeper
+	identifier := ctx.GetHeader("identifier")
+	info, ok := manager.getInstance(identifier)
+	if !ok { // 不存在该实例
+		responseError(ctx, errors.NoSuchInstance)
+		return
+	}
+	if info.IsFrozen { // 实例被冻结
+		responseError(ctx, errors.InstanceFrozen)
+		return
+	}
+	ctx.Values().Set(ctxKeeperKey, info.kp)
 	ctx.Next()
 }
 
