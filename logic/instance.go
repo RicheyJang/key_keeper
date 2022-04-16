@@ -276,13 +276,24 @@ func (manager *Manager) createInstance(instance model.Instance) (InstanceInfo, e
 		return InstanceInfo{}, errors.InvalidKeeper
 	}
 	generator := generatorValue.(keeper.Generator)
+	var kp keeper.KeyKeeper
 	// 创建实例
-	if err := manager.db.Create(&instance).Error; err != nil {
-		return InstanceInfo{}, err
-	}
-	kp, err := generator(keeper.Option{
-		Identifier: instance.Identifier,
-		DB:         manager.db,
+	err := manager.db.Transaction(func(tx *gorm.DB) (txErr error) {
+		defer func() {
+			if r := recover(); r != nil {
+				txErr = fmt.Errorf("panic: %v", r)
+			}
+		}()
+		// 数据库创建
+		if txErr = tx.Create(&instance).Error; txErr != nil {
+			return
+		}
+		// 生成keeper
+		kp, txErr = generator(keeper.Option{
+			Identifier: instance.Identifier,
+			DB:         manager.db,
+		})
+		return
 	})
 	if err != nil {
 		return InstanceInfo{}, err
