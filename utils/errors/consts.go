@@ -12,6 +12,7 @@ const (
 	CodeUserExist      = 10007
 	CodeInstanceExist  = 10008
 	CodeInstanceFrozen = 10009
+	CodeKeeperSupport  = 10010
 )
 
 var (

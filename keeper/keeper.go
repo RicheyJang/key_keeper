@@ -1,6 +1,10 @@
 package keeper
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 // KeyRequest 密钥请求
 type KeyRequest struct {
@@ -18,10 +22,29 @@ type KeyInfo struct {
 	Timeout   uint   `json:"timeout"`   // 超时时间戳（需轮替）
 }
 
+// KeysFilter 过滤要求
+type KeysFilter struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}
+
+// DistributeKeyRequest 密钥派发请求
+type DistributeKeyRequest struct {
+	ID        uint          `json:"id"`
+	Length    uint          `json:"length"`       // 密钥长度
+	Algorithm string        `json:"algorithm"`    // 加密算法
+	Rotation  time.Duration `json:"rotationTime"` // 轮替时长（为0则不轮替）
+}
+
 // KeyKeeper 密钥保管器：负责生成密钥、加密保存自己的密钥集、备份密钥等
 type KeyKeeper interface {
 	GetKeyInfo(request KeyRequest) (KeyInfo, error)
 	GetLatestVersionKey(ID uint) (KeyInfo, error)
+
+	FilterKeys(filter KeysFilter) (keys []KeyInfo, total int64, err error)
+	DistributeKey(request DistributeKeyRequest) (KeyInfo, error)
+	FreezeKey(id uint, beFrozen bool) error
+	DestroyKey(id uint) error
 
 	Destroy() error // 熔断
 }
