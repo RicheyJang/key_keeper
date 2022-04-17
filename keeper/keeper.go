@@ -24,8 +24,9 @@ type KeyInfo struct {
 
 // KeysFilter 过滤要求
 type KeysFilter struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
+	Offset  int  `json:"offset"`
+	Limit   int  `json:"limit"`
+	Content bool `json:"content"` // keys是否返回密钥内容
 }
 
 // DistributeKeyRequest 密钥派发请求
@@ -43,7 +44,6 @@ type KeyKeeper interface {
 
 	FilterKeys(filter KeysFilter) (keys []KeyInfo, total int64, err error)
 	DistributeKey(request DistributeKeyRequest) (KeyInfo, error)
-	FreezeKey(id uint, beFrozen bool) error
 	DestroyKey(id uint) error
 
 	Destroy() error // 熔断

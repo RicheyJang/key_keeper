@@ -45,6 +45,13 @@ func WebServer(manager *logic.Manager, addr string) {
 
 			insAPI.Post("/freeze", manager.HandlerOfFreezeInstance)
 		})
+
+		api.PartyFunc("/keys", func(keysAPI router.Party) {
+			keysAPI.Use(manager.PreCheckOfUserInstance)
+			keysAPI.Get("/", manager.HandlerOfGetKeys)
+			keysAPI.Put("/", manager.HandlerOfAddKey)
+			keysAPI.Delete("/", manager.HandlerOfDestroyKey)
+		})
 	})
 	// 前端页面
 	setupStatic(app)
