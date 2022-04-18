@@ -1,6 +1,10 @@
 package logic
 
 import (
+	"math"
+	"strings"
+	"time"
+
 	"github.com/RicheyJang/key_keeper/keeper"
 	"github.com/RicheyJang/key_keeper/utils/errors"
 	"github.com/kataras/iris/v12"
@@ -73,6 +77,14 @@ func (manager *Manager) HandlerOfAddKey(ctx iris.Context) {
 	err := ctx.ReadJSON(&request)
 	if err != nil {
 		responseError(ctx, err)
+		return
+	}
+	// 请求校验
+	if request.ID < 1 || request.ID > math.MaxUint32 ||
+		!(request.Length == 16 || request.Length == 24 || request.Length == 32) ||
+		!strings.HasPrefix(request.Algorithm, "aes") ||
+		(request.Rotation != 0 && request.Rotation < time.Second) {
+		responseError(ctx, errors.InvalidRequest)
 		return
 	}
 	instance := manager.getUserInstance(ctx)
