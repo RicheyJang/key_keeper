@@ -58,13 +58,51 @@ type KeeperSF struct {
 }
 
 func (sf *KeeperSF) GetKeyInfo(request keeper.KeyRequest) (keeper.KeyInfo, error) {
-	//TODO implement me
-	return keeper.KeyInfo{}, errors.KeeperNotSupport
+	// 查找数据库
+	var key ModelKey
+	if err := sf.db.Where("identifier = ?", sf.identifier).Where("id = ?", request.ID).
+		Take(&key).Error; err != nil {
+		return keeper.KeyInfo{}, err
+	}
+	// 生成密钥信息
+	now := time.Now()
+	info := keeper.KeyInfo{
+		ID:        request.ID,
+		Version:   request.Version,
+		Length:    key.Length,
+		Algorithm: key.Algorithm,
+		Timeout:   key.nextTimeoutAt(now),
+	}
+	content, err := getKeyContent(info.Length, info.ID, info.Version, sf.mainKey, key.SS)
+	if err != nil {
+		return keeper.KeyInfo{}, err
+	}
+	info.Key = hex.EncodeToString(content)
+	return info, err
 }
 
 func (sf *KeeperSF) GetLatestVersionKey(id uint) (keeper.KeyInfo, error) {
-	//TODO implement me
-	return keeper.KeyInfo{}, errors.KeeperNotSupport
+	// 查找数据库
+	var key ModelKey
+	if err := sf.db.Where("identifier = ?", sf.identifier).Where("id = ?", id).
+		Take(&key).Error; err != nil {
+		return keeper.KeyInfo{}, err
+	}
+	// 生成密钥信息
+	now := time.Now()
+	info := keeper.KeyInfo{
+		ID:        id,
+		Version:   key.versionAt(now),
+		Length:    key.Length,
+		Algorithm: key.Algorithm,
+		Timeout:   key.nextTimeoutAt(now),
+	}
+	content, err := getKeyContent(info.Length, info.ID, info.Version, sf.mainKey, key.SS)
+	if err != nil {
+		return keeper.KeyInfo{}, err
+	}
+	info.Key = hex.EncodeToString(content)
+	return info, err
 }
 
 func (sf *KeeperSF) FilterKeys(filter keeper.KeysFilter) (keys []keeper.KeyInfo, total int64, err error) {
