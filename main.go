@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RicheyJang/key_keeper/keeper/safer"
+
 	"github.com/RicheyJang/key_keeper/model"
 
 	"github.com/RicheyJang/key_keeper/keeper/example"
@@ -74,7 +76,8 @@ func main() {
 	manager, err := logic.NewManager(logic.Option{
 		DB:          db,
 		UserManager: model.NewUserManger(db),
-		KGs: []logic.KeeperGeneratorPair{ // 密钥保管器 及其 对应的生成器 列表 TODO 补充KG列表、使用其它Keeper为默认
+		KGs: []logic.KeeperGeneratorPair{ // 密钥保管器 及其 对应的生成器 列表
+			{KeeperName: "Safer", Generator: safer.GetSafer},
 			{KeeperName: "Example", Generator: example.NewExampleKeeper},
 		},
 	})

@@ -1,8 +1,6 @@
 package keeper
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -31,10 +29,10 @@ type KeysFilter struct {
 
 // DistributeKeyRequest 密钥派发请求
 type DistributeKeyRequest struct {
-	ID        uint          `json:"id"`
-	Length    uint          `json:"length"`       // 密钥长度
-	Algorithm string        `json:"algorithm"`    // 加密算法
-	Rotation  time.Duration `json:"rotationTime"` // 轮替时长（为0则不轮替）
+	ID        uint   `json:"id"`
+	Length    uint   `json:"length"`       // 密钥长度
+	Algorithm string `json:"algorithm"`    // 加密算法
+	Rotation  uint   `json:"rotationTime"` // 轮替时长（单位秒）（为0则不轮替）
 }
 
 // KeyKeeper 密钥保管器：负责生成密钥、加密保存自己的密钥集、备份密钥等

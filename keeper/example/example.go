@@ -9,7 +9,7 @@ import (
 
 type KeeperEx struct{}
 
-var templateError = errors.New(errors.CodeKeeperSupport, "current keeper not support this operation")
+var templateError = errors.KeeperNotSupport
 var staticKey = keeper.KeyInfo{
 	ID:        1,
 	Version:   1,

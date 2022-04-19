@@ -3,7 +3,6 @@ package logic
 import (
 	"math"
 	"strings"
-	"time"
 
 	"github.com/RicheyJang/key_keeper/keeper"
 	"github.com/RicheyJang/key_keeper/utils/errors"
@@ -24,6 +23,10 @@ func (manager *Manager) PreCheckOfUserInstance(ctx iris.Context) {
 		responseError(ctx, errors.NoSuchInstance)
 		return
 	}
+	if i.IsFrozen {
+		responseError(ctx, errors.InstanceFrozen)
+		return
+	}
 	ctx.Values().Set(ctxUserInstanceKey, i)
 	ctx.Next()
 }
@@ -42,7 +45,7 @@ func (manager *Manager) HandlerOfGetKeys(ctx iris.Context) {
 		responseError(ctx, err)
 		return
 	}
-	if request.Page <= 0 || request.Size < 0 {
+	if request.Page < 0 || request.Size < 0 {
 		responseError(ctx, errors.InvalidRequest)
 		return
 	}
@@ -82,8 +85,7 @@ func (manager *Manager) HandlerOfAddKey(ctx iris.Context) {
 	// 请求校验
 	if request.ID < 1 || request.ID > math.MaxUint32 ||
 		!(request.Length == 16 || request.Length == 24 || request.Length == 32) ||
-		!strings.HasPrefix(request.Algorithm, "aes") ||
-		(request.Rotation != 0 && request.Rotation < time.Second) {
+		!strings.HasPrefix(request.Algorithm, "aes") {
 		responseError(ctx, errors.InvalidRequest)
 		return
 	}
